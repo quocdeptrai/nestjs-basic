@@ -9,7 +9,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from './schemas/user.schema';
 import { Model } from 'mongoose';
-import { genSaltSync, hashSync } from 'bcryptjs';
+import { genSaltSync, hashSync, compareSync } from 'bcryptjs';
 
 @Injectable()
 export class UsersService {
@@ -46,7 +46,24 @@ export class UsersService {
     }
   }
 
+  async findOneByUsername(username: string) {
+    try {
+      let user = await this.userModel.findOne({
+        email: username,
+      });
+      return user;
+    } catch (error) {
+      throw new NotFoundException();
+    }
+  }
+
+  isValidPassword(password: string, hash: string) {
+    return compareSync(password, hash);
+  }
+
   async update(updateUserDto: UpdateUserDto) {
+    // check user
+    let user = await this.findOne(updateUserDto.id);
     // update user
     await this.userModel.updateOne(
       {
@@ -55,17 +72,17 @@ export class UsersService {
       { ...updateUserDto },
     );
     // get user after updated
-    let user = await this.userModel.findOne({ _id: updateUserDto.id });
+    user = await this.userModel.findOne({ _id: updateUserDto.id });
     return user;
   }
 
   async remove(id: string) {
+    // check user
+    let user = await this.findOne(id);
     // delete user
     let result = await this.userModel.deleteOne({
       _id: id,
     });
-    throw result.deletedCount > 0
-      ? new HttpException('Success', HttpStatus.OK)
-      : new NotFoundException();
+    throw new HttpException('Success', HttpStatus.OK);
   }
 }
